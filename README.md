@@ -37,7 +37,7 @@ flowchart TD
         MatchingEngine <--> |LLM Ranking| GeminiLLM[Gemini Flash API]
     end
     
-    BackendServices <--> |PostgREST / supabase-py| Supabase[(Supabase / PostgreSQL)]
+    BackendServices <--> |supabase-py| Supabase[(Supabase / PostgreSQL)]
     
     note1[Frontend never communicates<br>directly with Supabase.] -.-> Frontend
 ```
@@ -47,6 +47,7 @@ flowchart TD
 ## AI Matching Architecture
 
 Hubify uses a multi-stage funnel approach. It aggressively reduces the search space using vector math and deterministic rules before invoking expensive Generative AI models.
+<img width="342" height="866" alt="image" src="https://github.com/user-attachments/assets/8df5ec7a-edd0-4006-8759-a29be922a770" />
 
 **The Pipeline:**
 ```mermaid
@@ -291,12 +292,4 @@ For evaluation purposes, the following seeded accounts can be used to bypass reg
 ## Final Project Flow
 <img width="1297" height="206" alt="image" src="https://github.com/user-attachments/assets/b752c209-cc4c-4937-b429-c41e9d1f1755" />
 
-```mermaid
-flowchart LR
-    A[Client/Supplier] -->|Submits Data| B(Hubify Portal)
-    B --> C(FastAPI Backend)
-    C --> D[(Supabase + Embeddings)]
-    D --> E{Semantic & Business Filters}
-    E -->|Top Candidates| F(Gemini LLM)
-    F -->|Ranked Matches| G[Dashboard & Alerts]
-```
+
