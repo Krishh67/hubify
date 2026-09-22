@@ -28,7 +28,7 @@ flowchart TD
     User([User]) --> |HTTP / HTML| Frontend[Vanilla HTML/JS Frontend]
     Frontend <--> |JSON API| FastAPI[FastAPI Backend]
     
-    subgraph Backend Services
+    subgraph BackendServices [Backend Services]
         FastAPI --> Auth[Auth Service]
         FastAPI --> MatchingEngine[AI Matching Engine]
         FastAPI --> Notif[Notification Service]
@@ -37,7 +37,7 @@ flowchart TD
         MatchingEngine <--> |LLM Ranking| GeminiLLM[Gemini Flash API]
     end
     
-    Backend Services <--> |PostgREST / supabase-py| Supabase[(Supabase / PostgreSQL)]
+    BackendServices <--> |PostgREST / supabase-py| Supabase[(Supabase / PostgreSQL)]
     
     note1[Frontend never communicates<br>directly with Supabase.] -.-> Frontend
 ```
