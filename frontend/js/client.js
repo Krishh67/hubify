@@ -1,6 +1,31 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('client-form');
     
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit_id');
+
+    if (editId) {
+        document.getElementById('submit-btn').textContent = 'Update Requirement';
+        fetch(`/api/clients/${editId}`).then(r => r.json()).then(data => {
+            for (const key in data) {
+                const el = document.getElementById(key);
+                if (el) {
+                    if (key === 'specs' && data[key] && data[key].details) {
+                        el.value = data[key].details;
+                    } else if (key === 'certifications' && Array.isArray(data[key])) {
+                        el.value = data[key].join(', ');
+                    } else if (key === 'category' && !Array.from(el.options).map(o => o.value).includes(data[key])) {
+                        el.value = 'Other';
+                        document.getElementById('category_other').classList.remove('hidden');
+                        document.getElementById('category_other').value = data[key];
+                    } else {
+                        el.value = data[key];
+                    }
+                }
+            }
+        }).catch(e => console.error("Failed to load edit data", e));
+    }
+    
     // Auto-clear errors on input
     form.querySelectorAll('input, select, textarea').forEach(el => {
         el.addEventListener('input', () => {
@@ -104,9 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.remove('pointer-events-none', 'opacity-0');
         overlay.classList.add('opacity-100');
 
+        const endpointUrl = editId ? `/api/clients/${editId}` : '/api/clients';
+        const fetchMethod = editId ? 'PUT' : 'POST';
+
         try {
-            const response = await fetch('/api/clients', {
-                method: 'POST',
+            const response = await fetch(endpointUrl, {
+                method: fetchMethod,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });

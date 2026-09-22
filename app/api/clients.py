@@ -57,3 +57,20 @@ def get_client(client_id: int):
         raise HTTPException(status_code=404, detail=f"Client requirement {client_id} not found.")
     return record
 
+
+@router.put("/{client_id}", response_model=ClientResponse)
+def update_client(client_id: int, client: ClientCreate, background_tasks: BackgroundTasks):
+    from app.services.database import supabase
+    data = client.model_dump()
+    data["embedding"] = None
+    
+    res = supabase.table("clients").update(data).eq("id", client_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Client requirement not found.")
+        
+    supabase.table("matches").delete().eq("client_id", client_id).execute()
+    
+    from app.services.matching import match_client
+    background_tasks.add_task(match_client, client_id)
+    
+    return res.data[0]

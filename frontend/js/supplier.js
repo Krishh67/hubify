@@ -5,6 +5,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const successCard = document.getElementById('success-card');
     const overlay = document.getElementById('loading-overlay');
     
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit_id');
+
+    if (editId) {
+        submitBtn.textContent = 'Update Offering';
+        fetch(`/api/suppliers/${editId}`).then(r => r.json()).then(data => {
+            for (const key in data) {
+                const el = document.getElementById(key);
+                if (el) {
+                    if (key === 'specs' && data[key] && data[key].details) {
+                        el.value = data[key].details;
+                    } else if (key === 'certifications' && Array.isArray(data[key])) {
+                        el.value = data[key].join(', ');
+                    } else if (key === 'category' && !Array.from(el.options).map(o => o.value).includes(data[key])) {
+                        el.value = 'Other';
+                        document.getElementById('category_other').classList.remove('hidden');
+                        document.getElementById('category_other').value = data[key];
+                    } else {
+                        el.value = data[key];
+                    }
+                }
+            }
+        }).catch(e => console.error("Failed to load edit data", e));
+    }
+    
     document.getElementById('btn-submit-another').addEventListener('click', () => {
         successCard.classList.add('hidden');
         form.classList.remove('hidden');
@@ -116,9 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.remove('pointer-events-none', 'opacity-0');
         overlay.classList.add('opacity-100');
 
+        const endpointUrl = editId ? `/api/suppliers/${editId}` : '/api/suppliers';
+        const fetchMethod = editId ? 'PUT' : 'POST';
+
         try {
-            const res = await fetch('/api/suppliers', {
-                method: 'POST',
+            const res = await fetch(endpointUrl, {
+                method: fetchMethod,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
