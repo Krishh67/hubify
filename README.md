@@ -22,6 +22,10 @@ At its core, Hubify is not merely a "matching algorithm," but a complete end-to-
 
 
 
+
+https://github.com/user-attachments/assets/88807375-60b5-4bc1-a5be-d74303149d8f
+
+
 ---
 
 ## Key Features
