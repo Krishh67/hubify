@@ -80,7 +80,10 @@ def get_clients(profile_id: Optional[int] = None) -> list[dict]:
         if profile_id:
             query = query.eq("profile_id", profile_id)
         response = query.execute()
-        return response.data or []
+        data = response.data or []
+        for d in data:
+            d["has_embedding"] = d.get("embedding") is not None
+        return data
     except Exception as exc:
         _handle_db_error("get_clients", exc)
 
@@ -128,7 +131,10 @@ def get_suppliers(profile_id: Optional[int] = None) -> list[dict]:
         if profile_id:
             query = query.eq("profile_id", profile_id)
         response = query.execute()
-        return response.data or []
+        data = response.data or []
+        for d in data:
+            d["has_embedding"] = d.get("embedding") is not None
+        return data
     except Exception as exc:
         _handle_db_error("get_suppliers", exc)
 

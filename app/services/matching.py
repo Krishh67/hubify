@@ -66,8 +66,16 @@ def get_supplier_text(supp: dict) -> str:
 
 def call_llm_reranker(client_req: dict, top_candidates: list[dict]) -> dict:
     """Uses Gemini structured output to evaluate candidates."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
+    api_keys = [
+        os.environ.get("GEMINI_API_KEY"),
+        os.environ.get("GEMINI_API_KEY0"),
+        os.environ.get("GEMINI_API_KEY1"),
+        os.environ.get("GEMINI_API_KEY2")
+    ]
+    api_keys = [k for k in api_keys if k]
+    if not api_keys:
+        logger.error("No GEMINI_API_KEY found")
+        return None
     
     prompt = f"Evaluate the suitability of the following {len(top_candidates)} suppliers for this client requirement.\n\n"
     prompt += f"CLIENT REQUIREMENT:\n"
@@ -99,23 +107,35 @@ def call_llm_reranker(client_req: dict, top_candidates: list[dict]) -> dict:
         'gemini-3.5-flash-lite'
     ]
     
-    for model_name in models_to_try:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=genai.types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=LLMRankingList,
-                    temperature=0.1
+    for key in api_keys:
+        client = genai.Client(api_key=key)
+        key_exhausted = False
+        
+        for model_name in models_to_try:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=genai.types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=LLMRankingList,
+                        temperature=0.1
+                    )
                 )
-            )
-            print(f"Gemini LLM Output for Client {client_req.get('id')} using {model_name}: {response.text}")
-            return json.loads(response.text)
-        except Exception as e:
-            logger.warning(f"LLM Reranking failed for model {model_name}: {e}. Trying next model...")
+                print(f"Gemini LLM Output for Client {client_req.get('id')} using {model_name}: {response.text}")
+                return json.loads(response.text)
+            except Exception as e:
+                err_str = str(e).lower()
+                logger.warning(f"LLM Reranking failed for model {model_name} on key {key[:4]}...: {e}")
+                if "429" in err_str or "quota" in err_str or "exhausted" in err_str or "rate limit" in err_str:
+                    key_exhausted = True
+                    break
+                else:
+                    continue
+        if not key_exhausted:
+            break
             
-    logger.error("All fallback models failed for LLM Reranking.")
+    logger.error("All fallback models/keys failed for LLM Reranking.")
     return None
 
 def match_client(client_id: int):

@@ -148,7 +148,10 @@
             try {
               const mRes = await fetch(`/api/matches?client_id=${c.id}`);
               const matches = await mRes.json();
-              if (matches && matches.length > 0) {
+              if (!c.has_embedding) {
+                // Background job is still processing the new embedding and matching
+                // Leave the spinner active
+              } else if (matches && matches.length > 0) {
                 document.getElementById(`match-status-${c.id}`).innerHTML = `
                   <a href="/client/matches?id=${c.id}" class="text-[13px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer shadow-sm">
                     View ${matches.length} Matches &rarr;

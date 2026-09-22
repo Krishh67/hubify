@@ -66,5 +66,6 @@ class ClientResponse(BaseModel):
     additional_notes: Optional[str] = None
     certifications: list[str] = Field(default_factory=list)
     created_at: Optional[datetime] = None
+    has_embedding: bool = False
 
     model_config = {"from_attributes": True}
