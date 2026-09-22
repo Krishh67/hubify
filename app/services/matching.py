@@ -360,3 +360,27 @@ def match_client(client_id: int):
             logger.error(f"Error creating client notification: {e}")
 
     return {"status": "success", "matches_created": len(final_results)}
+
+def process_missing_embeddings_and_match():
+    """Background task to generate embeddings for new records and trigger matching."""
+    try:
+        # Handle suppliers
+        no_emb_suppliers = supabase.table("suppliers").select("id").is_("embedding", "null").execute()
+        if no_emb_suppliers.data:
+            suppliers_res = supabase.table("suppliers").select("*").in_("id", [s["id"] for s in no_emb_suppliers.data]).execute()
+            for s in suppliers_res.data:
+                s_text = get_supplier_text(s)
+                emb = get_embedding(s_text)
+                if emb:
+                    supabase.table("suppliers").update({"embedding": emb}).eq("id", s["id"]).execute()
+    except Exception as e:
+        logger.error(f"Error updating supplier embeddings in background: {e}")
+
+    try:
+        # Handle clients
+        no_emb_clients = supabase.table("clients").select("id").is_("embedding", "null").execute()
+        if no_emb_clients.data:
+            for c in no_emb_clients.data:
+                match_client(c["id"])
+    except Exception as e:
+        logger.error(f"Error updating client embeddings in background: {e}")
