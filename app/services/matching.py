@@ -139,25 +139,32 @@ def call_llm_reranker(client_req: dict, top_candidates: list[dict]) -> dict:
     return None
 
 def match_client(client_id: int):
+    logger.info(f"========== [START MATCHING PIPELINE] Client ID: {client_id} ==========")
     client_req = get_client_by_id(client_id)
     if not client_req:
+        logger.error(f"Client requirement {client_id} not found. Aborting.")
         raise ValueError(f"Client requirement {client_id} not found.")
 
     # 1. EMBEDDING
+    logger.info(f"[Step 1] Generating semantic embedding for Client ID {client_id}...")
     client_text = get_client_text(client_req)
     try:
         client_emb = get_embedding(client_text)
+        logger.info(f"[Step 1] Successfully generated {len(client_emb)}-dimensional embedding.")
     except Exception as e:
         logger.error(f"Failed to generate embedding for client: {e}")
         raise ValueError("Embedding failed gracefully.")
 
     # 2. SEMANTIC RETRIEVAL
+    logger.info(f"[Step 2] Performing vector similarity search for top 20 candidates...")
     # Since RPC might fail or be missing in the schema, we use fallback python logic.
     all_suppliers = []
     try:
         res = supabase.rpc("match_suppliers", {"query_embedding": str(client_emb), "match_count": 20}).execute()
         all_suppliers = res.data
+        logger.info(f"[Step 2] Supabase RPC returned {len(all_suppliers)} suppliers.")
     except Exception:
+        logger.info("[Step 2] Supabase RPC failed. Falling back to Python cosine similarity calculation.")
         # Fallback: pull active suppliers and compute in python
         res = supabase.table("suppliers").select("*").execute()
         all_suppliers = res.data
@@ -185,9 +192,13 @@ def match_client(client_id: int):
         all_suppliers = all_suppliers[:20]
 
     if not all_suppliers:
+        logger.warning(f"[Step 2] Found 0 candidates for Client ID {client_id}.")
         return {"status": "success", "message": "No suppliers available to match."}
+        
+    logger.info(f"[Step 2] Final top candidates from semantic search: {len(all_suppliers)}")
 
     # 3. CONSTRAINTS (Delivery is now a soft constraint)
+    logger.info(f"[Step 3] Applying constraints and deterministic scoring...")
     client_del_days = client_req.get("delivery_days", 999999)
     valid_suppliers = all_suppliers
 
@@ -277,15 +288,20 @@ def match_client(client_id: int):
     top_10 = scored_suppliers[:10]
 
     if not top_10:
+        logger.warning(f"[Step 3] 0 suppliers remained after constraints.")
         return {"status": "success", "message": "No suppliers met hard constraints."}
 
+    logger.info(f"[Step 4] Sending {len(top_10)} top candidates to Gemini LLM for reranking...")
     # 6. LLM RERANKING
     llm_output = call_llm_reranker(client_req, top_10)
     
     llm_map = {}
     if llm_output and "matches" in llm_output:
+        logger.info(f"[Step 4] Successfully received LLM evaluations for {len(llm_output['matches'])} candidates.")
         for m in llm_output["matches"]:
             llm_map[m["supplier_id"]] = m
+    else:
+        logger.warning("[Step 4] LLM reranking failed or returned empty. Using deterministic fallback scores.")
 
     # 7. FINAL SCORE
     final_results = []
@@ -338,6 +354,8 @@ def match_client(client_id: int):
     # Sort by final score
     final_results.sort(key=lambda x: x["final_score"], reverse=True)
     
+    logger.info(f"[Step 5] Storing {len(final_results)} valid matches to database (scores >= 30)...")
+    
     # 8. STORE
     for idx, res in enumerate(final_results):
         res["rank"] = idx + 1
@@ -376,6 +394,7 @@ def match_client(client_id: int):
     # Save embedding at the very end to signal UI that processing is fully complete
     try:
         supabase.table("clients").update({"embedding": client_emb}).eq("id", client_id).execute()
+        logger.info(f"[Step 6] Saved embedding for Client ID {client_id}. Pipeline COMPLETE.")
     except Exception as e:
         logger.warning(f"Could not save client embedding: {e}")
 
