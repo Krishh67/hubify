@@ -37,7 +37,7 @@ flowchart TD
         MatchingEngine <--> |LLM Ranking| GeminiLLM[Gemini Flash API]
     end
     
-    BackendServices <--> |supabase-py| Supabase[(Supabase / PostgreSQL)]
+    BackendServices <-----> |supabase-py| Supabase[(PostgreSQL)]
     
     note1[Frontend never communicates<br>directly with Supabase.] -.-> Frontend
 ```
