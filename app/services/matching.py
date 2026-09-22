@@ -318,6 +318,9 @@ def match_client(client_id: int):
             "risks": llm_data.get("risks", [])
         })
 
+    # Filter out scores < 30
+    final_results = [r for r in final_results if r["final_score"] >= 30.0]
+
     # Sort by final score
     final_results.sort(key=lambda x: x["final_score"], reverse=True)
     

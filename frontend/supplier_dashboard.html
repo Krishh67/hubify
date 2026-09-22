@@ -148,6 +148,13 @@
                     View ${matches.length} Matches &rarr;
                   </a>
                 `;
+              } else {
+                document.getElementById(`match-status-${s.id}`).innerHTML = `
+                  <div class="text-[13px] font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg flex items-center gap-2 cursor-not-allowed">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    No matches found
+                  </div>
+                `;
               }
             } catch(e) {}
           });
