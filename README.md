@@ -240,7 +240,6 @@ python run.py
 
 **5. Access the Platform**
 * App: `http://localhost:8000`
-* API Docs: `http://localhost:8000/docs`
 
 ---
 
