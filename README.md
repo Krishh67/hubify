@@ -1,3 +1,5 @@
+
+
 # Hubify - AI-Powered Client–Supplier Procurement Platform
 
 Hubify is a sophisticated web-based B2B procurement platform designed to bridge the gap between buyers and sellers. It moves beyond traditional keyword-based directory searches by leveraging artificial intelligence to deeply understand procurement requirements and automatically evaluate supplier offerings. 
@@ -5,6 +7,20 @@ Hubify is a sophisticated web-based B2B procurement platform designed to bridge 
 On Hubify, clients can submit detailed product requirements including technical specifications, delivery constraints, and budgets. Suppliers can list their available inventory, unit prices, and capabilities. The platform then acts as an intelligent intermediary, automatically analyzing new listings and instantly notifying relevant parties of high-confidence business opportunities.
 
 At its core, Hubify is not merely a "matching algorithm," but a complete end-to-end procurement intelligence pipeline. It uses semantic embeddings to understand the true intent of a requirement, deterministic business rules to enforce hard constraints, and generative LLMs to perform comparative ranking, ultimately delivering actionable, transparent matches to procurement teams.
+
+
+## Live Demo 📍
+
+| Platform | Link |
+|---|---|
+| 🚀 **Live Application** | **[Launch Hubify](https://hubify-rbzp.onrender.com/)** |
+| 📚 **API Documentation** | **[View API Docs](https://hubify-rbzp.onrender.com/api/docs)** |
+
+> **Hubify — Your Hub for Smarter Procurement**
+>
+
+
+
 
 ---
 
