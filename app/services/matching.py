@@ -173,12 +173,9 @@ def match_client(client_id: int):
     if not all_suppliers:
         return {"status": "success", "message": "No suppliers available to match."}
 
-    # 3. HARD CONSTRAINTS
+    # 3. CONSTRAINTS (Delivery is now a soft constraint)
     client_del_days = client_req.get("delivery_days", 999999)
-    valid_suppliers = []
-    for s in all_suppliers:
-        if s.get("delivery_days", 0) <= client_del_days:
-            valid_suppliers.append(s)
+    valid_suppliers = all_suppliers
 
     # Calculate Semantic Score for valid candidates if not already done by python fallback
     for s in valid_suppliers:
@@ -232,13 +229,15 @@ def match_client(client_id: int):
                 overage = s["unit_price"] - c_u_p
                 budget_score = max(0.0, 100.0 - (overage/c_u_p * 100.0))
                 
-        # Delivery Score
+        # Delivery Score (Allows 1-2 weeks margin of error)
         s_del_days = s.get("delivery_days", 0)
-        if s_del_days <= client_del_days / 2:
+        if s_del_days <= client_del_days:
             del_score = 100.0
         else:
-            diff = s_del_days - (client_del_days / 2)
-            del_score = max(0.0, 100.0 - ((diff / (client_del_days / 2)) * 100.0)) if client_del_days > 0 else 100.0
+            # Over deadline: penalty applies. Margin of error ~ 14 days
+            diff = s_del_days - client_del_days
+            penalty = (diff / 14.0) * 100.0
+            del_score = max(0.0, 100.0 - penalty)
             
         # Location Score
         loc_score = 25.0
@@ -279,18 +278,29 @@ def match_client(client_id: int):
     for s in top_10:
         llm_data = llm_map.get(s["id"], {})
         
+        has_llm = bool(llm_data)
         p_fit = llm_data.get("product_fit_score", 50.0)
         s_score = llm_data.get("spec_score", 50.0)
         
-        final_score = (
-            s["semantic_score"] * 0.20 +
-            p_fit * 0.25 +
-            s["quantity_score"] * 0.20 +
-            s["budget_score"] * 0.15 +
-            s["delivery_score"] * 0.10 +
-            s["location_score"] * 0.05 +
-            s_score * 0.05
-        )
+        if has_llm:
+            # 75% product fit, 25% for the rest
+            final_score = (
+                p_fit * 0.75 +
+                s["semantic_score"] * 0.05 +
+                s["quantity_score"] * 0.05 +
+                s["budget_score"] * 0.05 +
+                s["delivery_score"] * 0.05 +
+                s["location_score"] * 0.05
+            )
+        else:
+            # Fallback if LLM fails
+            final_score = (
+                s["semantic_score"] * 0.30 +
+                s["quantity_score"] * 0.25 +
+                s["budget_score"] * 0.25 +
+                s["delivery_score"] * 0.10 +
+                s["location_score"] * 0.10
+            )
         
         final_results.append({
             "client_id": client_req["id"],
