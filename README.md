@@ -1,454 +1,309 @@
-# MatchAI — AI-Powered Client–Supplier Matchmaking Platform
+# Hubify - AI-Powered Client–Supplier Procurement Platform
 
-> **Wisdom Group AI Intern Evaluation Project**  
-> Submission deadline: Thursday, 24 September 2026, 4:00 PM
+Hubify is a sophisticated web-based B2B procurement platform designed to bridge the gap between buyers and sellers. It moves beyond traditional keyword-based directory searches by leveraging artificial intelligence to deeply understand procurement requirements and automatically evaluate supplier offerings. 
 
-A full-stack web application that connects clients with suitable suppliers using an AI-powered semantic matching system built on Gemini embeddings and pgvector.
+On Hubify, clients can submit detailed product requirements including technical specifications, delivery constraints, and budgets. Suppliers can list their available inventory, unit prices, and capabilities. The platform then acts as an intelligent intermediary, automatically analyzing new listings and instantly notifying relevant parties of high-confidence business opportunities.
 
----
-
-## Project Overview
-
-MatchAI eliminates the manual effort of B2B procurement by automatically analysing client requirements and supplier offerings, then ranking the most compatible matches using a multi-factor AI scoring model.
-
-**Phase 1** (this submission): Complete CRUD data flow — form → FastAPI → Supabase → dashboard.  
-**Phase 2** (planned): AI matching engine with Gemini Embedding 2 + pgvector cosine similarity.
+At its core, Hubify is not merely a "matching algorithm," but a complete end-to-end procurement intelligence pipeline. It uses semantic embeddings to understand the true intent of a requirement, deterministic business rules to enforce hard constraints, and generative LLMs to perform comparative ranking, ultimately delivering actionable, transparent matches to procurement teams.
 
 ---
 
-## Features
+## Key Features
 
-| Feature | Status |
-|---|---|
-| Client Requirement Portal | ✅ Complete |
-| Supplier Offering Portal | ✅ Complete |
-| Real-time Dashboard | ✅ Complete |
-| REST API with Pydantic validation | ✅ Complete |
-| Supabase PostgreSQL integration | ✅ Complete |
-| Responsive B2B SaaS UI | ✅ Complete |
-| Basic Tests (validation + scoring stubs) | ✅ Complete |
-| AI Matching Engine (Gemini + pgvector) | 🔜 Phase 2 |
-| Email Notifications | 🔜 Phase 2 |
+* **Client Portal:** Clients can submit complex procurement requests (e.g., "550W Mono PERC Solar Panels"), specify budgets, required quantities, and delivery deadlines. They can view AI-curated matches and read natural-language explanations of why a supplier was recommended.
+* **Supplier Portal:** Suppliers can list their catalog, manage available quantities, set minimum order quantities (MOQ), and track incoming matches from active buyers looking for their specific products.
+* **AI-Powered Supplier Evaluation:** Uses Gemini 3072-dimensional embeddings and Gemini Flash models to semantically evaluate if a supplier's product technically aligns with a client's core requirement.
+* **Unified Admin Dashboard:** A top-level view of platform activity, displaying all active requirements, the full supplier network, and a unified feed of successful AI matches across the system.
+* **Match Scores & Explanations:** Every match includes a detailed composite score (0-100) and an AI-generated explanation detailing the exact product fit, potential risks, and deal-breakers.
+* **Real-time Notifications:** Users are notified as soon as an intelligent match is generated for their listings.
 
 ---
 
-## Architecture
+## System Architecture
 
+The application is built on a modular, API-driven architecture. The frontend communicates entirely through the FastAPI backend, which safely orchestrates database calls and AI service integrations.
+
+```mermaid
+flowchart TD
+    User([User]) --> |HTTP / HTML| Frontend[Vanilla HTML/JS Frontend]
+    Frontend <--> |JSON API| FastAPI[FastAPI Backend]
+    
+    subgraph Backend Services
+        FastAPI --> Auth[Auth Service]
+        FastAPI --> MatchingEngine[AI Matching Engine]
+        FastAPI --> Notif[Notification Service]
+        
+        MatchingEngine <--> |Generate Embeddings| GeminiEmb[Gemini Embedding API]
+        MatchingEngine <--> |LLM Ranking| GeminiLLM[Gemini Flash API]
+    end
+    
+    Backend Services <--> |PostgREST / supabase-py| Supabase[(Supabase / PostgreSQL)]
+    
+    note1[Frontend never communicates<br>directly with Supabase.] -.-> Frontend
 ```
-┌─────────────────────────────────────────────┐
-│           Browser (HTML/CSS/JS)             │
-│  index.html · client.html · supplier.html   │
-│  dashboard.html                             │
-└─────────────────┬───────────────────────────┘
-                  │  fetch("/api/...")
-                  ▼
-┌─────────────────────────────────────────────┐
-│              FastAPI (Python)               │
-│  app/api/clients.py   → POST/GET /api/clients   │
-│  app/api/suppliers.py → POST/GET /api/suppliers │
-│  app/api/matches.py   → GET /api/matches        │
-│  app/api/notifications.py → GET /api/notifications │
-│                                             │
-│  app/services/database.py  ← all DB calls  │
-│  app/services/embeddings.py ← Phase 2      │
-│  app/services/matching.py  ← Phase 2       │
-└─────────────────┬───────────────────────────┘
-                  │  supabase-py SDK
-                  ▼
-┌─────────────────────────────────────────────┐
-│         Supabase PostgreSQL                 │
-│  public.clients       (BIGINT id)           │
-│  public.suppliers     (BIGINT id)           │
-│  public.matches       (empty in Phase 1)    │
-│  public.notifications (empty in Phase 1)    │
-│                                             │
-│  pgvector extension (embeddings — Phase 2)  │
-└─────────────────────────────────────────────┘
+
+---
+
+## AI Matching Architecture
+
+Hubify uses a multi-stage funnel approach. It aggressively reduces the search space using vector math and deterministic rules before invoking expensive Generative AI models.
+
+**The Pipeline:**
+```mermaid
+flowchart TD
+    A[Client Requirement] --> B(Embedding Generation)
+    B --> C(Semantic Retrieval / Cosine Similarity)
+    C --> D(Hard Constraint Filtering)
+    D --> E(Python Objective Feature Calculation)
+    E --> F(Top 10 Candidates Shortlist)
+    F --> G(LLM Comparative Ranking)
+    G --> H[Final Match Score & Explanations]
+    H --> I[(Database & Notifications)]
 ```
+
+### 1. What Goes Into Embeddings
+Embeddings handle the **semantic** nature of the products.
+* **Client semantics:** Product requirement, Category, Technical specifications, Certifications, Additional notes.
+* **Supplier semantics:** Product offered, Category, Technical specifications, Certifications, Additional notes.
+
+### 2. What Is Handled Programmatically (Hard Logic)
+Business rules are explicitly excluded from embeddings because LLMs struggle with strict arithmetic. These are handled purely in Python:
+* Quantity and Available Inventory
+* Budget / Maximum Unit Price
+* Delivery lead times
+* Minimum Order Quantities (MOQ)
+* Unit of Measure (UOM) conversions
+
+---
+
+## Embedding & Vector Search
+
+Hubify utilizes **Gemini Embedding 2** to convert textual product descriptions into **3072-dimensional vectors**. 
+
+Instead of relying on simple keyword overlap (which fails if a client asks for "Energy Storage" but the supplier lists "LiFePO4 Batteries"), the system performs similarity searches in high-dimensional space. The PostgreSQL database is extended with `pgvector` to store these embeddings. Through cosine similarity calculations, the system retrieves only the most semantically relevant suppliers, dropping completely unrelated industries early in the pipeline.
+
+---
+
+## Hard Constraints & Objective Features
+
+Before a supplier is evaluated by the LLM, they must pass programmatic constraints:
+
+* **UOM Compatibility:** The system normalizes units across families (e.g., *Count, Mass, Volume, Length, Area*). A supplier selling in `kg` cannot match a client looking for `liters`.
+* **Budget Logic:** The client's `budget` is treated programmatically as the **Maximum Acceptable Unit Price**. If a supplier's unit price exceeds this budget, a strict mathematical penalty is applied.
+* **Quantity Coverage:** Calculated as `(Supplier Available Qty / Client Required Qty) * 100`.
+
+### Objective Score Calculation
+Python calculates a deterministic `temp_score` based on:
+1. Semantic Similarity (%)
+2. Quantity Coverage (%)
+3. Budget Alignment (%)
+4. Delivery Margin (%)
+5. Location Match
+
+---
+
+## LLM Ranking
+
+Only the **Top 10** deterministic candidates are forwarded to the Gemini Flash LLM. 
+The LLM evaluates the qualitative aspects of the match:
+* **Product Fit Score (0-100):** Does this supplier's product serve the core purpose of the client's request?
+* **Specification Score (0-100):** How well do the certifications and technical nuances align?
+* **Explanations:** The LLM generates a human-readable explanation, potential risks, and deal-breakers.
+
+The final system does **not** rely purely on the LLM's score. Python aggregates the LLM scores with the objective scores (Price, Quantity, Delivery) to calculate the `final_score`, determining the ultimate rank.
+
+---
+
+## Procurement Flow Example
+
+**Client Requirement:**
+* Product: 550W Monocrystalline Solar Panels
+* Qty: 500 pcs
+* Budget: ₹18,000/unit
+* Delivery: 30 days
+
+**Supplier Listing:**
+* Product: 550W Mono PERC Solar Panels
+* Available: 1000 pcs
+* Unit Price: ₹17,200/unit
+* Delivery: 20 days
+
+**Evaluation Execution:**
+1. **Semantic:** Very high cosine similarity between "Monocrystalline" and "Mono PERC".
+2. **UOM:** `pcs` matches `pcs`. (Pass)
+3. **Quantity:** 1000 available >= 500 required. (100% Score)
+4. **Budget:** ₹17,200 is <= ₹18,000 max unit price. (100% Score)
+5. **Delivery:** 20 days <= 30 days. (100% Score)
+6. **LLM Ranking:** Identifies excellent specification alignment and generates a positive match explanation.
+
+---
+
+## Database Design
+
+The system runs on PostgreSQL (via Supabase).
+
+| Table | Purpose | Important Fields |
+|---|---|---|
+| `profiles` | User authentication metadata. | `id`, `email`, `role`, `company_name` |
+| `clients` | Client procurement requests. | `product_requirement`, `budget`, `quantity_required`, `unit`, `delivery_days`, `embedding` |
+| `suppliers` | Supplier product inventory. | `product_offered`, `unit_price`, `available_quantity`, `unit`, `embedding` |
+| `notifications` | System alerts for users. | `user_id`, `message`, `type`, `read_status` |
+
+### The `matches` Table
+| Field | Type | Description |
+|---|---|---|
+| `client_id` / `supplier_id` | FK | Links the respective parties. |
+| `semantic_score` | Float | Raw vector similarity. |
+| `quantity_score` / `budget_score` / `delivery_score` / `location_score` | Float | Python-calculated objective metrics. |
+| `product_fit_score` / `spec_score` | Float | LLM-generated qualitative metrics. |
+| `final_score` | Float | Weighted composite score. |
+| `explanation` / `risks` / `deal_breakers` | Text/Array | LLM-generated insights. |
 
 ---
 
 ## Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Backend | Python 3.11+, FastAPI 0.115, Uvicorn |
-| Data validation | Pydantic v2 |
-| Database | Supabase PostgreSQL |
-| Vector DB | pgvector (via Supabase) |
-| DB Client | supabase-py v2 |
-| AI / Embeddings | Google Gemini Embedding 2 (Phase 2) |
-| Frontend | Vanilla HTML5, CSS3, JavaScript (ES2022) |
-| Testing | pytest, httpx |
-
----
-
-## Database Schema
-
-The application uses four tables in Supabase:
-
-### `public.clients`
-| Column | Type | Notes |
-|---|---|---|
-| `id` | BIGINT | Auto-generated identity PK |
-| `client_name` | TEXT | Required |
-| `email` | TEXT | Required |
-| `product_requirement` | TEXT | Required |
-| `category` | TEXT | Required |
-| `quantity_required` | NUMERIC | Required, > 0 |
-| `unit` | TEXT | Required |
-| `budget` | NUMERIC | Required, ≥ 0 |
-| `location` | TEXT | Required |
-| `city` | TEXT | Required |
-| `state` | TEXT | Required |
-| `country` | TEXT | Required |
-| `delivery_timeline` | TEXT | Required |
-| `delivery_days` | INTEGER | Required, > 0 |
-| `additional_notes` | TEXT | Optional |
-| `specs` | TEXT | Optional |
-| `certifications` | TEXT | Optional |
-| `embedding` | vector | NULL until Phase 2 |
-| `created_at` | TIMESTAMPTZ | Auto |
-
-### `public.suppliers`
-| Column | Type | Notes |
-|---|---|---|
-| `id` | BIGINT | Auto-generated identity PK |
-| `supplier_name` | TEXT | Required |
-| `email` | TEXT | Required |
-| `product_offered` | TEXT | Required |
-| `category` | TEXT | Required |
-| `available_quantity` | NUMERIC | Required, ≥ 0 |
-| `unit` | TEXT | Required |
-| `pricing_details` | TEXT | Required |
-| `unit_price` | NUMERIC | Required, ≥ 0 |
-| `min_order_qty` | NUMERIC | Required, ≥ 0 |
-| `location` | TEXT | Required |
-| `city` | TEXT | Required |
-| `state` | TEXT | Required |
-| `country` | TEXT | Required |
-| `delivery_capability` | TEXT | Required |
-| `delivery_days` | INTEGER | Required, > 0 |
-| `additional_notes` | TEXT | Optional |
-| `specs` | TEXT | Optional |
-| `certifications` | TEXT | Optional |
-| `embedding` | vector | NULL until Phase 2 |
-| `created_at` | TIMESTAMPTZ | Auto |
+| Component | Technology Used |
+| :--- | :--- |
+| **Frontend** | HTML5, CSS3 (Tailwind CSS), Vanilla JavaScript |
+| **Backend** | Python 3.x, FastAPI, Uvicorn |
+| **Database** | Supabase (PostgreSQL 15) |
+| **Vector Search** | pgvector (HNSW Indexing) |
+| **Embeddings** | Gemini Embedding 2 (`text-embedding-004`) |
+| **LLM Engine** | Gemini API (`gemini-3.6-flash`, fallback to `3.5-flash`) |
 
 ---
 
 ## Project Structure
 
-```
+```text
 client-supplier-matchmaking/
-│
 ├── app/
-│   ├── main.py              ← FastAPI app, routers, static mount
-│   ├── config.py            ← Environment variable loader
-│   │
-│   ├── api/
-│   │   ├── clients.py       ← POST/GET /api/clients
-│   │   ├── suppliers.py     ← POST/GET /api/suppliers
-│   │   ├── matches.py       ← GET /api/matches
-│   │   └── notifications.py ← GET /api/notifications
-│   │
-│   ├── models/
-│   │   ├── client.py        ← ClientCreate, ClientResponse
-│   │   ├── supplier.py      ← SupplierCreate, SupplierResponse
-│   │   └── match.py         ← MatchResponse, NotificationResponse
-│   │
-│   └── services/
-│       ├── database.py      ← All Supabase operations
-│       ├── embeddings.py    ← Gemini embedding (Phase 2 stub)
-│       ├── matching.py      ← AI matching engine (Phase 2 stub)
-│       └── notifications.py ← Notification service
-│
+│   ├── api/             # FastAPI route handlers (clients, suppliers, matches, auth)
+│   ├── models/          # Pydantic data schemas
+│   ├── services/        # Core business logic (database.py, matching.py, embeddings.py)
+│   ├── config.py        # Environment variable management
+│   └── main.py          # FastAPI application entry point
 ├── frontend/
-│   ├── index.html           ← Landing page
-│   ├── client.html          ← Client requirement form
-│   ├── supplier.html        ← Supplier offering form
-│   ├── dashboard.html       ← Live dashboard
-│   │
-│   ├── css/
-│   │   └── style.css        ← Full design system (B2B SaaS)
-│   │
-│   └── js/
-│       ├── client.js        ← Client form validation + submit
-│       ├── supplier.js      ← Supplier form validation + submit
-│       └── dashboard.js     ← Dashboard data loading + rendering
-│
-├── tests/
-│   ├── conftest.py          ← Pytest fixtures, sample payloads
-│   ├── test_clients.py      ← Client API tests
-│   ├── test_suppliers.py    ← Supplier API tests
-│   └── test_matching.py     ← Scoring logic tests
-│
-├── .env                     ← Your credentials (never commit)
-├── .env.example             ← Template for .env
-├── .gitignore
-├── requirements.txt
-├── run.py                   ← python run.py to start server
-└── README.md
+│   ├── css/             # Custom stylesheets
+│   ├── js/              # Frontend logic (dashboard.js, client.js, supplier.js)
+│   ├── index.html       # Landing Page
+│   └── *.html           # Dashboard views (Admin, Client, Supplier, Matches)
+├── tests/               # Pytest suite
+├── .env.example         # Template for required environment variables
+├── requirements.txt     # Python dependencies
+└── run.py               # Uvicorn server launcher
 ```
-
----
-
-## Setup
-
-### 1. Clone and create virtual environment
-
-```bash
-git clone <repo-url>
-cd client-supplier-matchmaking
-
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS/Linux
-source venv/bin/activate
-```
-
-### 2. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in your values:
-
-```bash
-cp .env.example .env
-```
-
-```env
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your-supabase-service-role-key
-GEMINI_API_KEY=your-gemini-api-key
-```
-
-> **SUPABASE_KEY**: Use your **service role** key (Supabase Dashboard → Settings → API → service_role).  
-> This key bypasses Row Level Security for server-side operations. Never expose it in frontend JS.
-
-### 4. Create Supabase tables
-
-Run the following SQL in your Supabase SQL Editor to create the `clients` and `suppliers` tables:
-
-```sql
--- Clients table
-CREATE TABLE IF NOT EXISTS public.clients (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    client_name         TEXT NOT NULL,
-    email               TEXT NOT NULL,
-    product_requirement TEXT NOT NULL,
-    category            TEXT NOT NULL,
-    quantity_required   NUMERIC(14,2) NOT NULL CHECK (quantity_required > 0),
-    unit                TEXT NOT NULL,
-    budget              NUMERIC(14,2) NOT NULL CHECK (budget >= 0),
-    location            TEXT NOT NULL,
-    city                TEXT NOT NULL,
-    state               TEXT NOT NULL,
-    country             TEXT NOT NULL,
-    delivery_timeline   TEXT NOT NULL,
-    delivery_days       INTEGER NOT NULL CHECK (delivery_days > 0),
-    additional_notes    TEXT,
-    specs               TEXT,
-    certifications      TEXT,
-    embedding           extensions.vector(768),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Suppliers table
-CREATE TABLE IF NOT EXISTS public.suppliers (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    supplier_name       TEXT NOT NULL,
-    email               TEXT NOT NULL,
-    product_offered     TEXT NOT NULL,
-    category            TEXT NOT NULL,
-    available_quantity  NUMERIC(14,2) NOT NULL CHECK (available_quantity >= 0),
-    unit                TEXT NOT NULL,
-    pricing_details     TEXT NOT NULL,
-    unit_price          NUMERIC(14,2) NOT NULL CHECK (unit_price >= 0),
-    min_order_qty       NUMERIC(14,2) NOT NULL CHECK (min_order_qty >= 0),
-    location            TEXT NOT NULL,
-    city                TEXT NOT NULL,
-    state               TEXT NOT NULL,
-    country             TEXT NOT NULL,
-    delivery_capability TEXT NOT NULL,
-    delivery_days       INTEGER NOT NULL CHECK (delivery_days > 0),
-    additional_notes    TEXT,
-    specs               TEXT,
-    certifications      TEXT,
-    embedding           extensions.vector(768),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Matches table (populated by Phase 2 AI matching)
-CREATE TABLE IF NOT EXISTS public.matches (
-    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    client_id       BIGINT REFERENCES public.clients(id) ON DELETE CASCADE,
-    supplier_id     BIGINT REFERENCES public.suppliers(id) ON DELETE CASCADE,
-    final_score     NUMERIC(5,2),
-    semantic_score  NUMERIC(5,2),
-    category_score  NUMERIC(5,2),
-    quantity_score  NUMERIC(5,2),
-    budget_score    NUMERIC(5,2),
-    location_score  NUMERIC(5,2),
-    delivery_score  NUMERIC(5,2),
-    rank            INTEGER,
-    status          TEXT DEFAULT 'pending',
-    explanation     TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Notifications table (populated by Phase 2)
-CREATE TABLE IF NOT EXISTS public.notifications (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    match_id            BIGINT REFERENCES public.matches(id) ON DELETE CASCADE,
-    notification_type   TEXT NOT NULL,
-    title               TEXT NOT NULL,
-    message             TEXT NOT NULL,
-    is_read             BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-### 5. Start the server
-
-```bash
-python run.py
-```
-
-Or directly with uvicorn:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Open [http://localhost:8000](http://localhost:8000) in your browser.
 
 ---
 
 ## API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/` | Landing page |
-| `GET` | `/client` | Client portal |
-| `GET` | `/supplier` | Supplier portal |
-| `GET` | `/dashboard` | Dashboard |
-| `POST` | `/api/clients` | Submit client requirement |
-| `GET` | `/api/clients` | List all client requirements |
-| `GET` | `/api/clients/{id}` | Get single client requirement |
-| `POST` | `/api/suppliers` | Submit supplier offering |
-| `GET` | `/api/suppliers` | List all supplier offerings |
-| `GET` | `/api/suppliers/{id}` | Get single supplier offering |
-| `GET` | `/api/matches` | List AI-generated matches |
-| `GET` | `/api/notifications` | List notifications |
-| `GET` | `/api/docs` | Interactive Swagger UI |
-| `GET` | `/api/redoc` | ReDoc API documentation |
+The FastAPI backend exposes RESTful endpoints:
+
+| Method | Route | Purpose |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/signin` | Authenticates a user and returns role/profile data. |
+| `GET`  | `/api/clients` | Retrieves client requirements (optionally filtered by `profile_id`). |
+| `POST` | `/api/clients` | Creates a new client requirement and triggers the matching engine. |
+| `GET`  | `/api/suppliers` | Retrieves supplier listings. |
+| `GET`  | `/api/matches` | Fetches aggregated match data with relational joins. |
+| `GET`  | `/api/notifications` | Retrieves unread system alerts for a user. |
 
 ---
 
-## Running Tests
+## Setup Instructions
 
+**1. Clone Repository & Setup Environment**
 ```bash
-pytest tests/ -v
+git clone https://github.com/Krishh67/hubify.git
+cd hubify
+python -m venv venv
+source venv/bin/activate  # Or `venv\Scripts\activate` on Windows
+pip install -r requirements.txt
 ```
 
-Tests use mocked Supabase calls — no real database connection needed.
-
----
-
-## AI Matching Approach (Phase 2 Plan)
-
-The Phase 2 matching pipeline will:
-
-1. **Embedding Generation**: Use `gemini-embedding-exp-03-07` (via `google-genai` SDK) to generate 768-dimension semantic vectors for each client requirement and supplier offering.
-
-2. **Vector Search**: Use pgvector's `<=>` cosine distance operator to find the top-N semantically similar suppliers for each client requirement.
-
-3. **Hard Gate Filters**: Before scoring, apply hard gates:
-   - Supplier `available_quantity` ≥ client `quantity_required`
-   - Supplier `unit_price × quantity` ≤ client `budget`
-   - Supplier `delivery_days` ≤ client `delivery_days`
-   - Category compatibility check
-
-4. **Multi-Factor Scoring**: Compute a weighted composite score:
-   ```
-   final_score = (
-     0.30 × semantic_score  +
-     0.20 × category_score  +
-     0.20 × budget_score    +
-     0.15 × quantity_score  +
-     0.10 × delivery_score  +
-     0.05 × location_score
-   )
-   ```
-
-5. **Storage**: Persist top matches to `public.matches` with rank and explanation.
-
-6. **Notifications**: Create entries in `public.notifications` for matched clients and suppliers.
-
----
-
-## Example Data Flow
-
-```
-POST /api/clients
-Content-Type: application/json
-
-{
-  "client_name": "Acme Manufacturing",
-  "email": "procurement@acme.com",
-  "product_requirement": "High-grade stainless steel sheets for pressure vessels",
-  "category": "Raw Materials",
-  "quantity_required": 500,
-  "unit": "Kilograms (kg)",
-  "budget": 50000,
-  "location": "Industrial Zone, Andheri East",
-  "city": "Mumbai",
-  "state": "Maharashtra",
-  "country": "India",
-  "delivery_timeline": "Within 3 weeks",
-  "delivery_days": 21
-}
-
-→ 201 Created
-{
-  "id": 1,
-  "client_name": "Acme Manufacturing",
-  ...
-  "created_at": "2026-09-22T08:00:00+05:30"
-}
+**2. Configure Environment Variables**
+Copy the template and add your credentials:
+```bash
+cp .env.example .env
 ```
 
----
+**3. Configure Supabase**
+Run the SQL definitions located in `database_schema.txt` in your Supabase SQL Editor to create tables, vector extensions, and triggers.
 
-## Future Scalability
+**4. Start the Application**
+```bash
+python run.py
+```
 
-- **Authentication**: Supabase Auth + Row Level Security policies (already defined in schema) for multi-tenant isolation
-- **Background jobs**: FastAPI BackgroundTasks or Celery for async matching pipeline
-- **Webhooks**: Notify external systems when matches are generated
-- **Analytics**: Match acceptance rates, category trends, geographic heatmaps
-- **Batch matching**: Re-run matching when new suppliers register
-- **Re-ranking**: Human feedback loop to improve match quality over time
-- **Export**: CSV/PDF export of match reports
+**5. Access the Platform**
+* App: `http://localhost:8000`
+* API Docs: `http://localhost:8000/docs`
 
 ---
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `SUPABASE_URL` | ✅ | Supabase project URL |
-| `SUPABASE_KEY` | ✅ | Supabase service role key (server-side only) |
-| `GEMINI_API_KEY` | Phase 2 | Google AI API key for embeddings |
+The `.env` file requires the following variables:
+* `SUPABASE_URL`: Your Supabase project URL.
+* `SUPABASE_KEY`: Your Supabase service role or anon key.
+* `GEMINI_API_KEY`: Google Gemini API key for embeddings and LLM reranking.
+
+*(Note: Never commit your `.env` file to version control. It is explicitly ignored via `.gitignore`.)*
 
 ---
 
-*Built with FastAPI · Supabase · pgvector · Gemini AI · Vanilla JS*
+## Demo Accounts
 
+For evaluation purposes, the following seeded accounts can be used to bypass registration:
+* **Client:** `client@demo.com`
+* **Supplier:** `supplier@demo.com`
+* **Supplier 2:** `supplier2@demo.com`
+
+*Security Note: This is an evaluation implementation. Production environments must implement strict password hashing, JWT validation, and Row Level Security (RLS).*
+
+---
+
+## Scalability & Design Decisions
+
+* **Candidate Reduction:** Running generative AI on 1,000 suppliers is extremely slow and expensive. Hubify solves this by using fast vector math (Cosine Similarity) and programmatic rules to instantly reduce the list to the Top 10 candidates *before* any LLM is invoked.
+* **Separation of Concerns:** Embeddings are excellent for semantic meaning but terrible at strict math. Hubify strictly separates numerical logic (Price, MOQ) into deterministic Python functions, reserving the LLM solely for qualitative analysis (Specs, Fit).
+* **Pre-calculated Matches:** Matches are generated asynchronously when a requirement is created and saved to the database. The frontend simply fetches pre-calculated results, resulting in lightning-fast dashboard load times.
+
+---
+
+## Evaluation Requirement Mapping
+
+| Requirement | Implementation Status |
+| :--- | :--- |
+| **Client & Supplier Portals** | ✅ Implemented (HTML/JS + FastAPI routes) |
+| **AI Matching Engine** | ✅ Implemented (Gemini Embeddings + Gemini Flash LLM) |
+| **Match Score/Ranking** | ✅ Implemented (Deterministic Math + AI weighted composite) |
+| **Match Storage** | ✅ Implemented (Persisted in Supabase `matches` table) |
+| **Dashboard / Admin View** | ✅ Implemented (Unified UI tracking system metrics) |
+| **Documentation** | ✅ Implemented (This README) |
+| **Scalability Considerations** | ✅ Implemented (Top 10 pre-filtering before LLM execution) |
+
+---
+
+## Future Improvements
+
+* **Production Authentication:** Integrate secure JWT sessions and OAuth providers.
+* **Email/SMS Integrations:** Push notifications beyond in-app alerts.
+* **Background Task Queues:** Move the matching engine execution to Celery/Redis for non-blocking asynchronous processing.
+* **Feedback Loops:** Allow clients to rate matches to fine-tune weighting parameters dynamically.
+
+---
+
+## Final Project Flow
+
+```mermaid
+flowchart LR
+    A[Client/Supplier] -->|Submits Data| B(Hubify Portal)
+    B --> C(FastAPI Backend)
+    C --> D[(Supabase + Embeddings)]
+    D --> E{Semantic & Business Filters}
+    E -->|Top Candidates| F(Gemini LLM)
+    F -->|Ranked Matches| G[Dashboard & Alerts]
+```
