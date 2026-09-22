@@ -140,6 +140,8 @@ The final system does **not** rely purely on the LLM's score. Python aggregates 
 ---
 
 ## Database Design
+<img width="1460" height="862" alt="image" src="https://github.com/user-attachments/assets/1195be73-36e2-4476-8b8c-f87543b30183" />
+
 
 The system runs on PostgreSQL (via Supabase).
 
@@ -250,7 +252,6 @@ The `.env` file requires the following variables:
 * `SUPABASE_KEY`: Your Supabase service role or anon key.
 * `GEMINI_API_KEY`: Google Gemini API key for embeddings and LLM reranking.
 
-*(Note: Never commit your `.env` file to version control. It is explicitly ignored via `.gitignore`.)*
 
 ---
 
@@ -264,7 +265,7 @@ For evaluation purposes, the following seeded accounts can be used to bypass reg
 * **Supplier 2:** `admin@demo.com`
 * password: admin123
 
-*Security Note: This is an evaluation implementation. Production environments must implement strict password hashing, JWT validation, and Row Level Security (RLS).*
+*Security Note: This is an evaluation implementation. In Production environments I would implement strict password hashing, JWT validation, and Row Level Security (RLS).*
 
 ---
 
