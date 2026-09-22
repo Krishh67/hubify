@@ -47,7 +47,7 @@ flowchart TD
 ## AI Matching Architecture
 
 Hubify uses a multi-stage funnel approach. It aggressively reduces the search space using vector math and deterministic rules before invoking expensive Generative AI models.
-<img width="342" height="866" alt="image" src="https://github.com/user-attachments/assets/8df5ec7a-edd0-4006-8759-a29be922a770" />
+
 
 **The Pipeline:**
 ```mermaid
