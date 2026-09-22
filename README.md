@@ -258,8 +258,11 @@ The `.env` file requires the following variables:
 
 For evaluation purposes, the following seeded accounts can be used to bypass registration:
 * **Client:** `client@demo.com`
+* password: client123
 * **Supplier:** `supplier@demo.com`
-* **Supplier 2:** `supplier2@demo.com`
+* password: supplier123
+* **Supplier 2:** `admin@demo.com`
+* password: admin123
 
 *Security Note: This is an evaluation implementation. Production environments must implement strict password hashing, JWT validation, and Row Level Security (RLS).*
 
@@ -273,17 +276,6 @@ For evaluation purposes, the following seeded accounts can be used to bypass reg
 
 ---
 
-## Evaluation Requirement Mapping
-
-| Requirement | Implementation Status |
-| :--- | :--- |
-| **Client & Supplier Portals** | ✅ Implemented (HTML/JS + FastAPI routes) |
-| **AI Matching Engine** | ✅ Implemented (Gemini Embeddings + Gemini Flash LLM) |
-| **Match Score/Ranking** | ✅ Implemented (Deterministic Math + AI weighted composite) |
-| **Match Storage** | ✅ Implemented (Persisted in Supabase `matches` table) |
-| **Dashboard / Admin View** | ✅ Implemented (Unified UI tracking system metrics) |
-| **Documentation** | ✅ Implemented (This README) |
-| **Scalability Considerations** | ✅ Implemented (Top 10 pre-filtering before LLM execution) |
 
 ---
 
@@ -297,6 +289,7 @@ For evaluation purposes, the following seeded accounts can be used to bypass reg
 ---
 
 ## Final Project Flow
+<img width="1297" height="206" alt="image" src="https://github.com/user-attachments/assets/b752c209-cc4c-4937-b429-c41e9d1f1755" />
 
 ```mermaid
 flowchart LR
