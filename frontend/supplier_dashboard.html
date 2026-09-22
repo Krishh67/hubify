@@ -148,15 +148,21 @@
             try {
               const mRes = await fetch(`/api/matches?supplier_id=${s.id}`);
               const matches = await mRes.json();
-              if (!s.has_embedding) {
-                // Background job is still processing the new embedding and matching
-                // Leave the spinner active
-              } else if (matches && matches.length > 0) {
+
+              const pendingKey = 'pending_match_supplier_' + s.id;
+              const pendingTime = localStorage.getItem(pendingKey);
+              const isPending = pendingTime && (Date.now() - parseInt(pendingTime) < 30000);
+              
+              if (matches && matches.length > 0) {
+                localStorage.removeItem(pendingKey);
                 document.getElementById(`match-status-${s.id}`).innerHTML = `
                   <a href="/supplier/matches?id=${s.id}" class="text-[13px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer shadow-sm">
                     View ${matches.length} Matches &rarr;
                   </a>
                 `;
+              } else if (!s.has_embedding || isPending) {
+                // Background job is still processing the new embedding and matching
+                // Leave the spinner active
               } else {
                 document.getElementById(`match-status-${s.id}`).innerHTML = `
                   <div class="text-[13px] font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg flex items-center gap-2 cursor-not-allowed">

@@ -150,12 +150,6 @@ def match_client(client_id: int):
     except Exception as e:
         logger.error(f"Failed to generate embedding for client: {e}")
         raise ValueError("Embedding failed gracefully.")
-        
-    # Update client embedding in DB for future reference
-    try:
-        supabase.table("clients").update({"embedding": client_emb}).eq("id", client_id).execute()
-    except Exception as e:
-        logger.warning(f"Could not save client embedding: {e}")
 
     # 2. SEMANTIC RETRIEVAL
     # Since RPC might fail or be missing in the schema, we use fallback python logic.
@@ -378,6 +372,12 @@ def match_client(client_id: int):
             )
         except Exception as e:
             logger.error(f"Error creating client notification: {e}")
+
+    # Save embedding at the very end to signal UI that processing is fully complete
+    try:
+        supabase.table("clients").update({"embedding": client_emb}).eq("id", client_id).execute()
+    except Exception as e:
+        logger.warning(f"Could not save client embedding: {e}")
 
     return {"status": "success", "matches_created": len(final_results)}
 

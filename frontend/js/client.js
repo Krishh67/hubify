@@ -142,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
 
             if (response.ok) {
+                localStorage.setItem('pending_match_client_' + result.id, Date.now().toString());
                 form.classList.add('hidden');
                 document.getElementById('success-card').classList.remove('hidden');
                 document.getElementById('record-id-display').textContent = `Ref: #${result.id}`;

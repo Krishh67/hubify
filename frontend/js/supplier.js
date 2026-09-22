@@ -158,6 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await res.json();
             
+            localStorage.setItem('pending_match_supplier_' + data.id, Date.now().toString());
+
             // Show success
             form.classList.add('hidden');
             successCard.classList.remove('hidden');
