@@ -309,11 +309,11 @@ def match_client(client_id: int):
         else:
             # Fallback if LLM fails
             final_score = (
-                s["semantic_score"] * 0.30 +
-                s["quantity_score"] * 0.25 +
-                s["budget_score"] * 0.25 +
-                s["delivery_score"] * 0.10 +
-                s["location_score"] * 0.10
+                s["semantic_score"] * 0.70 +
+                s["quantity_score"] * 0.10 +
+                s["budget_score"] * 0.10 +
+                s["delivery_score"] * 0.05 +
+                s["location_score"] * 0.05
             )
         
         final_results.append({
